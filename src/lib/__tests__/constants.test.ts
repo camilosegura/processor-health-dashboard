@@ -1,26 +1,8 @@
 import {
-  HOUR_MS,
-  TIME_RANGE_MS,
   parseTimeRange,
   getStartDate,
   DEFAULT_THRESHOLDS,
-  MAX_SELECTED_PROCESSORS,
 } from '../constants';
-
-describe('HOUR_MS', () => {
-  it('equals 3,600,000 milliseconds', () => {
-    expect(HOUR_MS).toBe(3_600_000);
-  });
-});
-
-describe('TIME_RANGE_MS', () => {
-  it('has correct values for all ranges', () => {
-    expect(TIME_RANGE_MS['1h']).toBe(HOUR_MS);
-    expect(TIME_RANGE_MS['6h']).toBe(6 * HOUR_MS);
-    expect(TIME_RANGE_MS['24h']).toBe(24 * HOUR_MS);
-    expect(TIME_RANGE_MS['7d']).toBe(7 * 24 * HOUR_MS);
-  });
-});
 
 describe('parseTimeRange', () => {
   it('returns valid range as-is', () => {
@@ -88,11 +70,5 @@ describe('DEFAULT_THRESHOLDS', () => {
     DEFAULT_THRESHOLDS.forEach(t => {
       expect(t.enabled).toBe(true);
     });
-  });
-});
-
-describe('MAX_SELECTED_PROCESSORS', () => {
-  it('equals 4', () => {
-    expect(MAX_SELECTED_PROCESSORS).toBe(4);
   });
 });

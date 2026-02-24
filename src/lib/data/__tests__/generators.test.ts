@@ -57,8 +57,8 @@ describe('getDataset', () => {
     const { transactions } = getDataset();
     const approved = transactions.filter(tx => tx.status === 'approved').length;
     const rate = approved / transactions.length;
-    expect(rate).toBeGreaterThan(0.60);
-    expect(rate).toBeLessThan(0.90);
+    expect(rate).toBeGreaterThan(0.70);
+    expect(rate).toBeLessThan(0.85);
   });
 });
 
@@ -72,7 +72,8 @@ describe('getTransactionsForProcessor', () => {
   });
 
   it('filters by time range', () => {
-    const now = new Date();
+    const { generatedAt } = getDataset();
+    const now = new Date(generatedAt);
     const oneHourAgo = new Date(now.getTime() - 3600000).toISOString();
     const txs = getTransactionsForProcessor('cloudbank', oneHourAgo, now.toISOString());
     txs.forEach(tx => {
