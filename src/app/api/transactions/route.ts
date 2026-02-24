@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
   const status = searchParams.get('status');
   const startTime = searchParams.get('start');
   const endTime = searchParams.get('end');
-  const page = parseInt(searchParams.get('page') || '1', 10);
-  const pageSize = parseInt(searchParams.get('pageSize') || '50', 10);
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+  const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)));
   const country = searchParams.get('country');
 
   const { transactions } = getDataset();
@@ -20,10 +20,8 @@ export async function GET(request: NextRequest) {
   if (endTime) filtered = filtered.filter(tx => tx.timestamp <= endTime);
   if (country) filtered = filtered.filter(tx => tx.country === country);
 
-  // Sort most recent first
-  filtered = [...filtered].sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  // Dataset is already sorted ascending by timestamp; reverse for most-recent-first
+  filtered = [...filtered].reverse();
 
   const total = filtered.length;
   const start = (page - 1) * pageSize;

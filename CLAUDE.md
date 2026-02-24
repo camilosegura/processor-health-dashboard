@@ -9,7 +9,6 @@ Real-time payment processor health monitoring dashboard for Mirage Retail. Built
 - **Styling**: Tailwind CSS v4 (dark theme only)
 - **Charts**: Recharts v3
 - **Icons**: Lucide React
-- **Dates**: date-fns v4
 - **No database** - all data is generated in-memory via a seeded PRNG
 
 ## Commands
@@ -45,8 +44,9 @@ src/
 │   │   ├── anomalies.ts            # Anomaly patterns (auth rate drops, latency spikes with timing)
 │   │   ├── time-series.ts          # Aggregation into time-bucketed MetricSnapshots
 │   │   └── seed.ts                 # Mulberry32 PRNG + helpers (randomBetween, weightedChoice)
+│   ├── constants.ts                # Shared constants (DEFAULT_THRESHOLDS, TIME_RANGE_MS, parseTimeRange, getStartDate)
 │   └── utils/
-│       ├── health.ts               # calculateHealthStatus() + status color helpers
+│       ├── health.ts               # calculateHealthStatus(authRate, responseTime, thresholds?) + status color helpers
 │       └── format.ts               # formatPercent, formatMs, formatNumber, formatCurrency, formatDateTime
 └── types/
     ├── processor.ts                # ProcessorConfig, ProcessorHealth, ProcessorWithHealth, HealthStatus
@@ -65,7 +65,7 @@ src/
 ## Data Model
 - 5 processors with different baseline auth rates (78-85%) and response times (800-1500ms)
 - Active anomalies: PayFastMX has auth rate crash (~56%), Andean Gateway has latency spike (~8.4s)
-- Health thresholds: critical if auth <65% or response >5000ms; degraded if auth <75% or response >3000ms
+- Health thresholds are configurable via UI and recalculated client-side; defaults: critical if auth <65% or response >5000ms; degraded if auth <75% or response >3000ms
 - Time series bucket sizes adapt to range: 5min (1H), 15min (6H), 30min (24H), 2h (7D)
 
 ## Conventions

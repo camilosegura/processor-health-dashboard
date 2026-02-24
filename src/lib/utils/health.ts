@@ -1,13 +1,19 @@
 import { HealthStatus } from '@/types/processor';
+import { AlertThreshold } from '@/types/alerts';
 
 export function calculateHealthStatus(
   authRate: number,
-  responseTimeMs: number
+  responseTimeMs: number,
+  thresholds?: AlertThreshold[]
 ): HealthStatus {
-  // Critical: auth rate < 65% OR response time > 5000ms
-  if (authRate < 65 || responseTimeMs > 5000) return 'critical';
-  // Degraded: auth rate < 75% OR response time > 3000ms
-  if (authRate < 75 || responseTimeMs > 3000) return 'degraded';
+  const authCritical = thresholds?.find(t => t.metric === 'authorizationRate' && t.severity === 'critical' && t.enabled)?.value ?? 65;
+  const respCritical = thresholds?.find(t => t.metric === 'responseTime' && t.severity === 'critical' && t.enabled)?.value ?? 5000;
+  if (authRate < authCritical || responseTimeMs > respCritical) return 'critical';
+
+  const authWarning = thresholds?.find(t => t.metric === 'authorizationRate' && t.severity === 'warning' && t.enabled)?.value ?? 75;
+  const respWarning = thresholds?.find(t => t.metric === 'responseTime' && t.severity === 'warning' && t.enabled)?.value ?? 3000;
+  if (authRate < authWarning || responseTimeMs > respWarning) return 'degraded';
+
   return 'healthy';
 }
 

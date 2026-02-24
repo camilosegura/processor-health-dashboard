@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ProcessorWithHealth } from '@/types/processor';
 import { MetricSnapshot, TimeRangeOption } from '@/types/metrics';
 import { AlertThreshold } from '@/types/alerts';
 import { PROCESSORS } from '@/lib/data/processors';
+import { DEFAULT_THRESHOLDS, TIME_RANGE_MS, MAX_SELECTED_PROCESSORS } from '@/lib/constants';
+import { calculateHealthStatus } from '@/lib/utils/health';
 import { ProcessorGrid } from '@/components/overview/ProcessorGrid';
 import { TimeRangeSelector } from '@/components/ui/TimeRangeSelector';
 import { AuthorizationRateChart } from '@/components/charts/AuthorizationRateChart';
@@ -34,31 +36,41 @@ export default function Dashboard() {
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [drillDownProcessor, setDrillDownProcessor] = useState<string | null>(null);
-  const [thresholds, setThresholds] = useState<AlertThreshold[]>([
-    { id: 'auth-warning', metric: 'authorizationRate', operator: 'lt', value: 75, severity: 'warning', enabled: true },
-    { id: 'auth-critical', metric: 'authorizationRate', operator: 'lt', value: 65, severity: 'critical', enabled: true },
-    { id: 'resp-warning', metric: 'responseTime', operator: 'gt', value: 3000, severity: 'warning', enabled: true },
-    { id: 'resp-critical', metric: 'responseTime', operator: 'gt', value: 5000, severity: 'critical', enabled: true },
-  ]);
+  const [error, setError] = useState<string | null>(null);
+  const [thresholds, setThresholds] = useState<AlertThreshold[]>(DEFAULT_THRESHOLDS);
   const [activeTab, setActiveTab] = useState<'overview' | 'compare'>('overview');
 
   const fetchProcessors = useCallback(async () => {
-    const res = await fetch('/api/processors');
-    const data = await res.json();
-    setProcessors(data);
-    setLastUpdated(new Date());
-    setLoading(false);
+    try {
+      const res = await fetch('/api/processors');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setProcessors(data);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch processors:', err);
+      setError('Failed to load processor data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const fetchMetrics = useCallback(async () => {
     setMetricsLoading(true);
-    const ids = selectedProcessors.length > 0
-      ? selectedProcessors
-      : PROCESSORS.map(p => p.id);
-    const res = await fetch(`/api/metrics?ids=${ids.join(',')}&range=${timeRange}`);
-    const data = await res.json();
-    setMetrics(data.metrics);
-    setMetricsLoading(false);
+    try {
+      const ids = selectedProcessors.length > 0
+        ? selectedProcessors
+        : PROCESSORS.map(p => p.id);
+      const res = await fetch(`/api/metrics?ids=${ids.join(',')}&range=${timeRange}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setMetrics(data.metrics);
+    } catch (err) {
+      console.error('Failed to fetch metrics:', err);
+    } finally {
+      setMetricsLoading(false);
+    }
   }, [timeRange, selectedProcessors]);
 
   useEffect(() => { fetchProcessors(); }, [fetchProcessors]);
@@ -73,14 +85,44 @@ export default function Dashboard() {
   const toggleProcessor = (id: string) => {
     setSelectedProcessors(prev => {
       if (prev.includes(id)) return prev.filter(p => p !== id);
-      if (prev.length >= 4) return prev;
+      if (prev.length >= MAX_SELECTED_PROCESSORS) return prev;
       return [...prev, id];
     });
   };
 
-  // Count alerts
-  const criticalCount = processors.filter(p => p.health.status === 'critical').length;
-  const degradedCount = processors.filter(p => p.health.status === 'degraded').length;
+  // Recalculate health status client-side when thresholds change
+  const processorsWithThresholds = useMemo(() => {
+    return processors.map(p => ({
+      ...p,
+      health: {
+        ...p.health,
+        status: calculateHealthStatus(
+          p.health.currentAuthRate,
+          p.health.currentResponseTimeMs,
+          thresholds
+        ),
+      },
+    }));
+  }, [processors, thresholds]);
+
+  // Count alerts from threshold-aware health
+  const criticalCount = processorsWithThresholds.filter(p => p.health.status === 'critical').length;
+  const degradedCount = processorsWithThresholds.filter(p => p.health.status === 'degraded').length;
+
+  // Compute revenue impact from actual data
+  const revenueImpact = useMemo(() => {
+    const degradedProcessors = processorsWithThresholds.filter(p => p.health.status !== 'healthy');
+    if (degradedProcessors.length === 0) return null;
+    const totalVolume = processorsWithThresholds.reduce((sum, p) => sum + p.health.currentVolume, 0);
+    if (totalVolume === 0) return null;
+    const avgDeclineIncrease = degradedProcessors.reduce((sum, p) => {
+      const baselineAuth = PROCESSORS.find(pr => pr.id === p.id)?.baselineAuthRate ?? 0.8;
+      const currentAuth = p.health.currentAuthRate / 100;
+      return sum + (baselineAuth - currentAuth) * p.health.currentVolume;
+    }, 0);
+    const impactPercent = (avgDeclineIncrease / totalVolume) * 100;
+    return impactPercent > 0.1 ? impactPercent : null;
+  }, [processorsWithThresholds]);
 
   // Get series for charts
   const chartProcessors = selectedProcessors.length > 0
@@ -109,9 +151,8 @@ export default function Dashboard() {
 
   // Time range for drill-down
   const now = new Date();
-  const rangeMs = { '1h': 3600000, '6h': 21600000, '24h': 86400000, '7d': 604800000 };
   const drillDownRange = {
-    start: new Date(now.getTime() - rangeMs[timeRange]).toISOString(),
+    start: new Date(now.getTime() - TIME_RANGE_MS[timeRange]).toISOString(),
     end: now.toISOString(),
   };
 
@@ -128,8 +169,27 @@ export default function Dashboard() {
             {criticalCount > 0 && degradedCount > 0 && ' | '}
             {degradedCount > 0 && `${degradedCount} processor${degradedCount > 1 ? 's' : ''} degraded`}
           </span>
-          <ArrowRight size={14} className={criticalCount > 0 ? 'text-red-400' : 'text-amber-400'} />
-          <span className="text-gray-400 text-xs">Estimated revenue impact: -23%</span>
+          {revenueImpact !== null && (
+            <>
+              <ArrowRight size={14} className={criticalCount > 0 ? 'text-red-400' : 'text-amber-400'} />
+              <span className="text-gray-400 text-xs">
+                Estimated revenue impact: -{revenueImpact.toFixed(1)}%
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="px-4 py-2.5 flex items-center justify-center gap-2 text-sm bg-red-500/10 border-b border-red-500/20">
+          <span className="text-red-300">{error}</span>
+          <button
+            onClick={() => { setError(null); fetchProcessors(); }}
+            className="text-xs text-red-400 underline hover:text-red-300"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -193,13 +253,13 @@ export default function Dashboard() {
           ) : (
             <>
               <ProcessorGrid
-                processors={processors}
+                processors={processorsWithThresholds}
                 selectedIds={selectedProcessors}
                 onProcessorClick={toggleProcessor}
                 onDrillDown={setDrillDownProcessor}
               />
               <p className="text-[11px] text-gray-600 mt-2">
-                Click processors to select for comparison (max 4). Use &quot;View Transactions&quot; to drill into individual transactions.
+                Click processors to select for comparison (max {MAX_SELECTED_PROCESSORS}). Use &quot;View Transactions&quot; to drill into individual transactions.
               </p>
             </>
           )}
@@ -310,7 +370,7 @@ export default function Dashboard() {
                 <Layers size={40} className="text-gray-700 mx-auto mb-3" />
                 <h3 className="text-gray-300 font-medium">Select Processors to Compare</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Click on 2-4 processor cards above to compare their performance side-by-side
+                  Click on 2-{MAX_SELECTED_PROCESSORS} processor cards above to compare their performance side-by-side
                 </p>
               </div>
             ) : (

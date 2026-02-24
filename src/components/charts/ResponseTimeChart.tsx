@@ -27,14 +27,19 @@ interface ResponseTimeChartProps {
 }
 
 export function ResponseTimeChart({ series, showP95 = true, thresholds }: ResponseTimeChartProps) {
+  const seriesMaps = series.map(s => ({
+    ...s,
+    dataMap: new Map(s.data.map(p => [p.timestamp, p])),
+  }));
+
   const allTimestamps = new Set<string>();
   series.forEach(s => s.data.forEach(p => allTimestamps.add(p.timestamp)));
   const sortedTimestamps = Array.from(allTimestamps).sort();
 
   const chartData = sortedTimestamps.map(ts => {
     const point: Record<string, unknown> = { timestamp: ts };
-    series.forEach(s => {
-      const match = s.data.find(p => p.timestamp === ts);
+    seriesMaps.forEach(s => {
+      const match = s.dataMap.get(ts);
       point[`${s.name} P50`] = match ? match.responseTimeP50 : null;
       if (showP95) {
         point[`${s.name} P95`] = match ? match.responseTimeP95 : null;

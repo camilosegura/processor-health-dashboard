@@ -8,7 +8,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import { TimeSeriesPoint } from '@/types/metrics';
 import { CustomTooltip } from './CustomTooltip';
@@ -25,14 +24,19 @@ interface VolumeChartProps {
 }
 
 export function VolumeChart({ series }: VolumeChartProps) {
+  const seriesMaps = series.map(s => ({
+    ...s,
+    dataMap: new Map(s.data.map(p => [p.timestamp, p])),
+  }));
+
   const allTimestamps = new Set<string>();
   series.forEach(s => s.data.forEach(p => allTimestamps.add(p.timestamp)));
   const sortedTimestamps = Array.from(allTimestamps).sort();
 
   const chartData = sortedTimestamps.map(ts => {
     const point: Record<string, unknown> = { timestamp: ts };
-    series.forEach(s => {
-      const match = s.data.find(p => p.timestamp === ts);
+    seriesMaps.forEach(s => {
+      const match = s.dataMap.get(ts);
       point[s.name] = match ? match.transactionVolume : 0;
     });
     return point;
@@ -61,11 +65,6 @@ export function VolumeChart({ series }: VolumeChartProps) {
             />
           }
         />
-        {series.length > 1 && (
-          <Legend
-            wrapperStyle={{ fontSize: 12, color: '#6b7280' }}
-          />
-        )}
         {series.map(s => (
           <Bar
             key={s.name}

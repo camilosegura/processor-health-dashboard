@@ -20,12 +20,11 @@ No additional setup, environment variables, or databases required. The applicati
 
 | Technology | Purpose |
 |-----------|---------|
-| **Next.js 14** (App Router) | React framework with API routes |
+| **Next.js 16** (App Router) | React framework with API routes |
 | **TypeScript** | Type safety across the entire codebase |
 | **Tailwind CSS** | Utility-first styling for a dark, monitoring-grade UI |
 | **Recharts** | Data visualization (line charts, area charts, bar charts) |
 | **Lucide React** | Icon library |
-| **date-fns** | Date formatting utilities |
 
 ### Why this stack?
 
@@ -65,7 +64,7 @@ src/
 
 The dashboard uses a deterministic mock data generator (`seed=42`) that produces:
 
-- **~60,000+ transactions** across 7 days
+- **~82,000+ transactions** across 7 days
 - **5 payment processors** with distinct baseline performance profiles
 - **Realistic anomaly patterns**:
   - **PayFastMX**: Authorization rate dropped from 82% to ~61% starting 18 hours ago (ongoing)

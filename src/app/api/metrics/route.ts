@@ -2,23 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTransactionsForProcessor } from '@/lib/data/generators';
 import { computeMetricSnapshot } from '@/lib/data/time-series';
 import { PROCESSORS } from '@/lib/data/processors';
-import { TimeRangeOption } from '@/types/metrics';
+import { parseTimeRange, getStartDate, MAX_PROCESSOR_IDS_PER_REQUEST } from '@/lib/constants';
 
 // Compare multiple processors
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const ids = searchParams.get('ids')?.split(',') || PROCESSORS.map(p => p.id);
-  const range = (searchParams.get('range') || '24h') as TimeRangeOption;
+  const range = parseTimeRange(searchParams.get('range'));
   const now = new Date();
+  const start = getStartDate(range, now);
 
-  let start: Date;
-  switch (range) {
-    case '1h': start = new Date(now.getTime() - 60 * 60 * 1000); break;
-    case '6h': start = new Date(now.getTime() - 6 * 60 * 60 * 1000); break;
-    case '24h': start = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
-    case '7d': start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
-    default: start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  }
+  const idsParam = searchParams.get('ids');
+  const validProcessorIds = new Set(PROCESSORS.map(p => p.id));
+  const ids = idsParam
+    ? idsParam.split(',').filter(id => validProcessorIds.has(id)).slice(0, MAX_PROCESSOR_IDS_PER_REQUEST)
+    : PROCESSORS.map(p => p.id);
 
   const metrics: Record<string, ReturnType<typeof computeMetricSnapshot>> = {};
 

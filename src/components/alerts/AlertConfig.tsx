@@ -2,19 +2,13 @@
 
 import { useState } from 'react';
 import { AlertThreshold } from '@/types/alerts';
+import { DEFAULT_THRESHOLDS } from '@/lib/constants';
 import { Settings, X } from 'lucide-react';
 
 interface AlertConfigProps {
   thresholds: AlertThreshold[];
   onChange: (thresholds: AlertThreshold[]) => void;
 }
-
-const DEFAULT_THRESHOLDS: AlertThreshold[] = [
-  { id: 'auth-warning', metric: 'authorizationRate', operator: 'lt', value: 75, severity: 'warning', enabled: true },
-  { id: 'auth-critical', metric: 'authorizationRate', operator: 'lt', value: 65, severity: 'critical', enabled: true },
-  { id: 'resp-warning', metric: 'responseTime', operator: 'gt', value: 3000, severity: 'warning', enabled: true },
-  { id: 'resp-critical', metric: 'responseTime', operator: 'gt', value: 5000, severity: 'critical', enabled: true },
-];
 
 export function AlertConfig({ thresholds, onChange }: AlertConfigProps) {
   const [open, setOpen] = useState(false);
@@ -46,7 +40,7 @@ export function AlertConfig({ thresholds, onChange }: AlertConfigProps) {
             </div>
 
             <p className="text-xs text-gray-500 mb-4">
-              Configure when processors should be flagged as degraded or critical. These thresholds appear as reference lines on charts.
+              Configure when processors should be flagged as degraded or critical. These thresholds affect processor card status and appear as reference lines on charts.
             </p>
 
             <div className="space-y-3">
