@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0f;
+  --foreground: #e5e7eb;
+  --card: #111119;
+  --card-border: #1e1e2e;
+  --muted: #6b7280;
+  --accent: #3b82f6;
 }
 
 @theme inline {
@@ -12,15 +16,56 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a3e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4e;
+}
+
+/* Recharts overrides */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: #1e1e2e;
+}
+
+.recharts-text {
+  fill: #6b7280;
+  font-size: 11px;
+}
+
+/* Pulse animation for critical status */
+@keyframes pulse-critical {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-critical {
+  animation: pulse-critical 2s ease-in-out infinite;
+}
+
+/* Gradient backgrounds for cards */
+.card-gradient-healthy {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+}
+.card-gradient-degraded {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, transparent 60%);
+}
+.card-gradient-critical {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, transparent 60%);
 }
